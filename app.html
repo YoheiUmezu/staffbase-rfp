@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RFP 回答バッチ</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f1419;
+      --card: #1a2332;
+      --text: #e7eef8;
+      --muted: #8b9cb3;
+      --accent: #3d8bfd;
+      --accent-dim: #2563c7;
+      --ok: #34d399;
+      --err: #f87171;
+      --bar-bg: #2d3a4f;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f4f6fa;
+        --card: #fff;
+        --text: #1a2332;
+        --muted: #5c6b80;
+        --accent: #1d6fd9;
+        --accent-dim: #1557b0;
+        --bar-bg: #e2e8f0;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Sans", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 1.5rem;
+    }
+    main {
+      max-width: 40rem;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      margin: 0 0 0.25rem;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,.12);
+    }
+    label.file {
+      display: block;
+      border: 2px dashed var(--muted);
+      border-radius: 10px;
+      padding: 1.25rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    label.file:hover, label.file:focus-within {
+      border-color: var(--accent);
+      background: rgba(61, 139, 253, 0.06);
+    }
+    input[type="file"] { display: none; }
+    .fname {
+      margin-top: 0.75rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+    button {
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) {
+      background: var(--accent-dim);
+    }
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .progress-wrap {
+      margin-top: 1rem;
+    }
+    .bar {
+      height: 10px;
+      border-radius: 5px;
+      background: var(--bar-bg);
+      overflow: hidden;
+    }
+    .bar > i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      border-radius: 5px;
+      transition: width 0.3s ease;
+    }
+    .msg {
+      margin-top: 0.6rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      min-height: 1.4em;
+    }
+    .msg.err { color: var(--err); }
+    .msg.ok { color: var(--ok); }
+    a.download {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.65rem 1.1rem;
+      background: var(--ok);
+      color: #052e22;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: 8px;
+    }
+    a.download:hover { filter: brightness(1.05); }
+    .hidden { display: none !important; }
+    ol.steps {
+      margin: 0;
+      padding-left: 1.2rem;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    ol.steps li { margin: 0.2rem 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>RFP 回答バッチ</h1>
+    <p class="sub">AnythingLLM で質問列に回答を書き込みます。夜はこのページを開いたままにしておいてください。</p>
+
+    <div class="card">
+      <label class="file">
+        <span><strong>Excel を選択</strong>（.xlsx）</span>
+        <input type="file" id="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+        <div class="fname" id="fname">未選択</div>
+      </label>
+      <button type="button" id="btnStart" disabled>処理開始</button>
+    </div>
+
+    <div class="card">
+      <strong>進捗</strong>
+      <div class="progress-wrap">
+        <div class="bar"><i id="bar"></i></div>
+        <div class="msg" id="msg">待機中</div>
+      </div>
+      <a class="download hidden" id="dl" href="#" download>回答済み Excel をダウンロード</a>
+    </div>
+
+    <div class="card">
+      <strong>手順</strong>
+      <ol class="steps">
+        <li>このページ（http://localhost:5000）を開く</li>
+        <li>RFP.xlsx をアップロード</li>
+        <li>「処理開始」を押す</li>
+        <li>完了まで放置（ブラウザは閉じない）</li>
+        <li>翌朝、ダウンロードリンクから取得</li>
+      </ol>
+    </div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const fileInput = $("file");
+    const fname = $("fname");
+    const btnStart = $("btnStart");
+    const bar = $("bar");
+    const msg = $("msg");
+    const dl = $("dl");
+
+    let pollTimer = null;
+    let uploadId = null;
+
+    function ensurePolling() {
+      if (pollTimer) return;
+      pollTimer = setInterval(poll, 2000);
+    }
+
+    function setMsg(text, cls) {
+      msg.textContent = text;
+      msg.className = "msg" + (cls ? " " + cls : "");
+    }
+
+    function setProgress(pct, detail) {
+      bar.style.width = Math.min(100, Math.max(0, pct)) + "%";
+      if (detail) setMsg(detail);
+    }
+
+    fileInput.addEventListener("change", async () => {
+      const f = fileInput.files[0];
+      dl.classList.add("hidden");
+      uploadId = null;
+      if (!f) {
+        fname.textContent = "未選択";
+        btnStart.disabled = true;
+        return;
+      }
+      fname.textContent = f.name;
+      setMsg("アップロード中…");
+      btnStart.disabled = true;
+      const fd = new FormData();
+      fd.append("file", f);
+      try {
+        const r = await fetch("/api/upload", { method: "POST", body: fd });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || r.statusText);
+        uploadId = j.upload_id;
+        fname.textContent = j.original_name + "（アップロード済み）";
+        setMsg("アップロード完了。処理開始を押してください。");
+        btnStart.disabled = false;
+      } catch (e) {
+        fname.textContent = "未選択";
+        fileInput.value = "";
+        setMsg("アップロード失敗: " + e.message, "err");
+      }
+    });
+
+    function stopPoll() {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    }
+
+    async function poll() {
+      try {
+        const r = await fetch("/api/progress");
+        const j = await r.json();
+        if (j.status === "running") {
+          ensurePolling();
+          const t = j.total_rows || 1;
+          const c = j.current_row_index || 0;
+          const pct = t ? (c / t) * 100 : 0;
+          setProgress(pct, j.message || "処理中…");
+          btnStart.disabled = true;
+          dl.classList.add("hidden");
+        } else if (j.status === "done") {
+          stopPoll();
+          setProgress(100, j.message || "完了");
+          msg.classList.add("ok");
+          btnStart.disabled = false;
+          if (j.download_token) {
+            dl.href = "/api/download?token=" + encodeURIComponent(j.download_token);
+            dl.classList.remove("hidden");
+          }
+        } else if (j.status === "error") {
+          stopPoll();
+          setProgress(0, j.message || "エラー", "err");
+          btnStart.disabled = false;
+          dl.classList.add("hidden");
+        } else if (j.status === "uploaded") {
+          setProgress(0, j.message || "アップロード済み。処理開始を押してください。");
+        } else if (j.status === "idle") {
+          setProgress(0, j.message || "待機中");
+        }
+      } catch (e) {
+        setMsg("進捗の取得に失敗: " + e.message, "err");
+      }
+    }
+
+    btnStart.addEventListener("click", async () => {
+      if (!uploadId) {
+        setMsg("先に Excel をアップロードしてください。", "err");
+        return;
+      }
+      dl.classList.add("hidden");
+      stopPoll();
+      setMsg("開始要求を送信中…");
+      try {
+        const r = await fetch("/api/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ upload_id: uploadId }),
+        });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || r.statusText);
+        setMsg(j.message || "処理を開始しました");
+        ensurePolling();
+        poll();
+      } catch (e) {
+        setMsg("開始できませんでした: " + e.message, "err");
+      }
+    });
+
+    poll();
+  </script>
+</body>
+</html>

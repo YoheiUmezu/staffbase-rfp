@@ -1,0 +1,6 @@
+.venv/
+.env
+rfp_error.log
+web_uploads/
+__pycache__/
+*.pyc

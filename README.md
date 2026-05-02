@@ -1,4 +1,68 @@
-# Staffbase RFP Response Engine
+# Staffbase RFP
+
+Staffbase の RFP（Excel）回答支援用リポジトリです。AnythingLLM 連携の Python バッチ／簡易 Web UI と、セールスエンジニア向けの回答ガイドライン（KB 参照ルール）を含みます。
+
+---
+
+## Python ツール（`rfp_answerer.py`）
+
+### 必要環境
+
+- Python 3.10 以上推奨
+- 依存パッケージは **`requirements.txt` にのみ定義**されています。**リポジトリを clone しただけではライブラリは入りません。** 仮想環境を作ってから `pip install` してください。
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### 環境変数（`.env`）
+
+プロジェクト直下に `.env` を置きます（`.gitignore` 対象のためコミットしません）。
+
+| 変数 | 説明 |
+|------|------|
+| `ANYTHINGLLM_API_KEY` | AnythingLLM API の Bearer トークン |
+| `ANYTHINGLLM_WORKSPACE` | ワークスペース slug |
+| `QUESTION_COLUMN` | 質問列（既定: `B`） |
+| `ANSWER_COLUMN` | 回答列（既定: `C`） |
+| `HEADER_ROWS` | スキップするヘッダー行数（既定: `1`） |
+| `ANYTHINGLLM_BASE_URL` | 任意。既定はコード内の URL |
+| `PORT` / `HOST` | Web モード時の待ち受け（既定: `5000` / `127.0.0.1`） |
+
+### CLI バッチ
+
+`input/` に `.xlsx` を置き、集計を標準出力、`output/` に `answered_*.xlsx` を出力します。
+
+```bash
+python3 rfp_answerer.py
+```
+
+### Web UI（Flask）
+
+同じリポジトリの `app.html` を `http://localhost:5000` で配信します。アップロード → 処理開始 → 進捗表示 → 完了後ダウンロード。
+
+```bash
+python3 rfp_answerer.py serve
+```
+
+アップロード一時ファイルは `web_uploads/`、エラーログは `rfp_error.log` に出力されます。
+
+### 依存ライブラリ一覧
+
+| パッケージ | 用途 |
+|------------|------|
+| `requests` | AnythingLLM HTTP API |
+| `openpyxl` | Excel 読み書き |
+| `python-dotenv` | `.env` 読み込み |
+| `flask` | Web サーバー（`serve` 時のみ使用） |
+
+---
+
+## セールスエンジニア向け：回答ガイドライン（AI / 人間共通）
+
+以下は RFP 回答時の情報源と品質ルールです。
 
 ## 1. 役割とミッション
 
